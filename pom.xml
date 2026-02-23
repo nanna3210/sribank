@@ -1,0 +1,27 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.sribank</groupId>
+    <artifactId>sri-bank-monorepo</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>sri-bank-monorepo</name>
+
+    <modules>
+        <module>services/auth-service</module>
+        <module>services/user-service</module>
+        <module>services/role-permission-service</module>
+        <module>services/account-service</module>
+        <module>services/transaction-service</module>
+        <module>services/ledger-service</module>
+        <module>services/notification-service</module>
+        <module>services/fraud-service</module>
+        <module>services/audit-service</module>
+        <module>services/payment-orchestrator-service</module>
+        <module>services/wallet-service</module>
+        <module>services/loan-service</module>
+        <module>services/external-gateway-service</module>
+    </modules>
+</project>
