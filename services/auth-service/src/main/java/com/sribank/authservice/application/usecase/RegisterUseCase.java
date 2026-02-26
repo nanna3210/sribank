@@ -30,6 +30,7 @@ public class RegisterUseCase {
 
         String passwordHash = passwordEncoder.encode(command.password());
         AuthUser savedUser = authUserRepository.save(AuthUser.create(command.username(), command.email(), passwordHash));
+        authUserRepository.assignRole(savedUser.getId(), "USER");
 
         return authTokenIssueService.issueForUser(savedUser);
     }

@@ -5,6 +5,8 @@ import com.sribank.authservice.application.command.LogoutCommand;
 import com.sribank.authservice.application.command.RefreshTokenCommand;
 import com.sribank.authservice.application.command.RegisterCommand;
 import com.sribank.authservice.application.dto.AuthResult;
+import com.sribank.authservice.application.dto.CurrentUserResult;
+import com.sribank.authservice.application.usecase.GetCurrentUserUseCase;
 import com.sribank.authservice.application.usecase.LoginUseCase;
 import com.sribank.authservice.application.usecase.LogoutUseCase;
 import com.sribank.authservice.application.usecase.RefreshTokenUseCase;
@@ -14,13 +16,18 @@ import com.sribank.authservice.interfaces.rest.request.LogoutRequest;
 import com.sribank.authservice.interfaces.rest.request.RefreshTokenRequest;
 import com.sribank.authservice.interfaces.rest.request.RegisterRequest;
 import com.sribank.authservice.interfaces.rest.response.AuthResponse;
+import com.sribank.authservice.interfaces.rest.response.CurrentUserResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -30,15 +37,18 @@ public class AuthController {
     private final LoginUseCase loginUseCase;
     private final RefreshTokenUseCase refreshTokenUseCase;
     private final LogoutUseCase logoutUseCase;
+    private final GetCurrentUserUseCase getCurrentUserUseCase;
 
     public AuthController(RegisterUseCase registerUseCase,
                           LoginUseCase loginUseCase,
                           RefreshTokenUseCase refreshTokenUseCase,
-                          LogoutUseCase logoutUseCase) {
+                          LogoutUseCase logoutUseCase,
+                          GetCurrentUserUseCase getCurrentUserUseCase) {
         this.registerUseCase = registerUseCase;
         this.loginUseCase = loginUseCase;
         this.refreshTokenUseCase = refreshTokenUseCase;
         this.logoutUseCase = logoutUseCase;
+        this.getCurrentUserUseCase = getCurrentUserUseCase;
     }
 
     @PostMapping("/register")
@@ -75,6 +85,19 @@ public class AuthController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(@Valid @RequestBody LogoutRequest request) {
         logoutUseCase.execute(new LogoutCommand(request.refreshToken()));
+    }
+
+    @GetMapping("/me")
+    @ResponseStatus(HttpStatus.OK)
+    public CurrentUserResponse me(Authentication authentication) {
+        CurrentUserResult result = getCurrentUserUseCase.execute(String.valueOf(authentication.getPrincipal()));
+        return new CurrentUserResponse(result.userId(), result.username(), result.email());
+    }
+
+    @GetMapping("/admin/ping")
+    @ResponseStatus(HttpStatus.OK)
+    public Map<String, String> adminPing() {
+        return Map.of("status", "OK", "message", "admin access granted");
     }
 
     private AuthResponse toResponse(AuthResult result) {

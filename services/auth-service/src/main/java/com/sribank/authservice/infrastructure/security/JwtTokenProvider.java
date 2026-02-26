@@ -9,7 +9,11 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 @Component
 public class JwtTokenProvider {
@@ -29,11 +33,15 @@ public class JwtTokenProvider {
     }
 
     public String createAccessToken(String subject) {
-        return createToken(subject, accessTokenExpirationSeconds);
+        return createAccessToken(subject, List.of());
+    }
+
+    public String createAccessToken(String subject, List<String> roles) {
+        return createToken(subject, accessTokenExpirationSeconds, Map.of("roles", roles));
     }
 
     public String createRefreshToken(String subject) {
-        return createToken(subject, refreshTokenExpirationSeconds);
+        return createToken(subject, refreshTokenExpirationSeconds, Map.of());
     }
 
     public String extractSubject(String token) {
@@ -62,12 +70,50 @@ public class JwtTokenProvider {
         }
     }
 
-    private String createToken(String subject, long expirySeconds) {
+    public boolean isTokenValid(String token) {
+        try {
+            Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    public List<String> extractRoles(String token) {
+        try {
+            Object rawRoles = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .get("roles");
+
+            if (rawRoles instanceof Collection<?> roleCollection) {
+                List<String> roles = new ArrayList<>();
+                for (Object role : roleCollection) {
+                    if (role != null) {
+                        roles.add(String.valueOf(role));
+                    }
+                }
+                return roles;
+            }
+
+            return List.of();
+        } catch (JwtException | IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Invalid JWT token", ex);
+        }
+    }
+
+    private String createToken(String subject, long expirySeconds, Map<String, Object> claims) {
         Instant now = Instant.now();
         Instant expiry = now.plusSeconds(expirySeconds);
 
         return Jwts.builder()
                 .subject(subject)
+                .claims(claims)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
                 .signWith(secretKey)

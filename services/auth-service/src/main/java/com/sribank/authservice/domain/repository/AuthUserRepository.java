@@ -2,6 +2,7 @@ package com.sribank.authservice.domain.repository;
 
 import com.sribank.authservice.domain.model.AuthUser;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface AuthUserRepository {
@@ -13,4 +14,8 @@ public interface AuthUserRepository {
     boolean existsByUsernameOrEmail(String username, String email);
 
     AuthUser save(AuthUser user);
+
+    List<String> findRoleCodesByUserId(String userId);
+
+    void assignRole(String userId, String roleCode);
 }
