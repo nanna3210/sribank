@@ -3,6 +3,7 @@ package com.sribank.authservice.application.usecase;
 import com.sribank.authservice.application.command.RefreshTokenCommand;
 import com.sribank.authservice.application.dto.AuthResult;
 import com.sribank.authservice.domain.exception.InvalidRefreshTokenException;
+import com.sribank.authservice.domain.exception.RefreshTokenReuseDetectedException;
 import com.sribank.authservice.domain.model.AuthUser;
 import com.sribank.authservice.domain.model.RefreshToken;
 import com.sribank.authservice.domain.repository.AuthUserRepository;
@@ -32,8 +33,13 @@ public class RefreshTokenUseCase {
 
     public AuthResult execute(RefreshTokenCommand command) {
         String token = command.refreshToken();
-        RefreshToken storedToken = refreshTokenRepository.findActiveByToken(token)
-                .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token is invalid or revoked"));
+        RefreshToken storedToken = refreshTokenRepository.findByToken(token)
+                .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token is invalid"));
+
+        if (storedToken.isRevoked()) {
+            refreshTokenRepository.revokeByFamilyId(storedToken.getFamilyId());
+            throw new RefreshTokenReuseDetectedException("Refresh token replay detected; session family revoked");
+        }
 
         if (storedToken.getExpiryDate().isBefore(Instant.now())) {
             refreshTokenRepository.revokeByToken(token);
@@ -42,7 +48,7 @@ public class RefreshTokenUseCase {
 
         String userIdFromToken = jwtTokenProvider.extractSubject(token);
         if (!storedToken.getUserId().equals(userIdFromToken)) {
-            refreshTokenRepository.revokeByToken(token);
+            refreshTokenRepository.revokeByFamilyId(storedToken.getFamilyId());
             throw new InvalidRefreshTokenException("Refresh token subject mismatch");
         }
 
@@ -50,6 +56,6 @@ public class RefreshTokenUseCase {
                 .orElseThrow(() -> new InvalidRefreshTokenException("User not found for refresh token"));
 
         refreshTokenRepository.revokeByToken(token);
-        return authTokenIssueService.issueForUser(user);
+        return authTokenIssueService.issueForUser(user, storedToken.getFamilyId(), storedToken.getId());
     }
 }

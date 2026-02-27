@@ -27,12 +27,19 @@ public class AuthTokenIssueService {
     }
 
     public AuthResult issueForUser(AuthUser user) {
+        return issueForUser(user, null, null);
+    }
+
+    public AuthResult issueForUser(AuthUser user, String familyId, String parentTokenId) {
         List<String> roleCodes = authUserRepository.findRoleCodesByUserId(user.getId());
         String accessToken = jwtTokenProvider.createAccessToken(user.getId(), roleCodes);
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
         Instant expiry = jwtTokenProvider.extractExpiration(refreshToken).toInstant();
+        RefreshToken refreshTokenModel = familyId == null
+                ? RefreshToken.issueNewFamily(user.getId(), refreshToken, expiry)
+                : RefreshToken.issueInFamily(user.getId(), refreshToken, expiry, familyId, parentTokenId);
 
-        refreshTokenRepository.save(RefreshToken.issue(user.getId(), refreshToken, expiry));
+        refreshTokenRepository.save(refreshTokenModel);
 
         return new AuthResult(
                 user.getId(),

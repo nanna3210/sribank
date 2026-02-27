@@ -9,7 +9,7 @@ import com.sribank.authservice.application.usecase.LoginUseCase;
 import com.sribank.authservice.application.usecase.LogoutUseCase;
 import com.sribank.authservice.application.usecase.RefreshTokenUseCase;
 import com.sribank.authservice.application.usecase.RegisterUseCase;
-import com.sribank.authservice.domain.exception.InvalidRefreshTokenException;
+import com.sribank.authservice.domain.exception.RefreshTokenReuseDetectedException;
 import com.sribank.authservice.domain.repository.RefreshTokenRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +41,7 @@ class AuthFlowIntegrationTest {
         registry.add("spring.datasource.username", MYSQL::getUsername);
         registry.add("spring.datasource.password", MYSQL::getPassword);
         registry.add("spring.flyway.enabled", () -> true);
+        registry.add("security.jwt.secret", () -> "test-secret-key-with-at-least-32-characters");
     }
 
     @Autowired
@@ -77,12 +78,14 @@ class AuthFlowIntegrationTest {
         assertTrue(refreshTokenRepository.findActiveByToken(oldRefreshToken).isEmpty());
         assertTrue(refreshTokenRepository.findActiveByToken(rotated.refreshToken()).isPresent());
 
-        logoutUseCase.execute(new LogoutCommand(rotated.refreshToken()));
+        assertThrows(
+                RefreshTokenReuseDetectedException.class,
+                () -> refreshTokenUseCase.execute(new RefreshTokenCommand(oldRefreshToken))
+        );
+
+        // Reusing old revoked token should revoke the entire family, including the latest token.
         assertTrue(refreshTokenRepository.findActiveByToken(rotated.refreshToken()).isEmpty());
 
-        assertThrows(
-                InvalidRefreshTokenException.class,
-                () -> refreshTokenUseCase.execute(new RefreshTokenCommand(rotated.refreshToken()))
-        );
+        logoutUseCase.execute(new LogoutCommand(rotated.refreshToken()));
     }
 }

@@ -42,7 +42,10 @@ public class SecurityConfig {
                                 "/api/v1/auth/logout",
                                 "/api/v1/health/**",
                                 "/actuator/health",
-                                "/actuator/info"
+                                "/actuator/info",
+                                "/api-docs/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/auth/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/auth/me").authenticated()

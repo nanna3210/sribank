@@ -24,6 +24,11 @@ public class JpaRefreshTokenRepositoryAdapter implements RefreshTokenRepository 
     }
 
     @Override
+    public Optional<RefreshToken> findByToken(String token) {
+        return springDataRefreshTokenRepository.findByToken(token).map(this::toDomain);
+    }
+
+    @Override
     public Optional<RefreshToken> findActiveByToken(String token) {
         return springDataRefreshTokenRepository.findByTokenAndRevokedFalse(token).map(this::toDomain);
     }
@@ -34,12 +39,20 @@ public class JpaRefreshTokenRepositoryAdapter implements RefreshTokenRepository 
         springDataRefreshTokenRepository.revokeByToken(token);
     }
 
+    @Override
+    @Transactional
+    public void revokeByFamilyId(String familyId) {
+        springDataRefreshTokenRepository.revokeByFamilyId(familyId);
+    }
+
     private RefreshTokenJpaEntity toEntity(RefreshToken refreshToken) {
         return new RefreshTokenJpaEntity(
                 refreshToken.getId(),
                 refreshToken.getUserId(),
                 refreshToken.getToken(),
                 refreshToken.getExpiryDate(),
+                refreshToken.getFamilyId(),
+                refreshToken.getParentTokenId(),
                 refreshToken.isRevoked()
         );
     }
@@ -50,6 +63,8 @@ public class JpaRefreshTokenRepositoryAdapter implements RefreshTokenRepository 
                 entity.getUserId(),
                 entity.getToken(),
                 entity.getExpiryDate(),
+                entity.getFamilyId(),
+                entity.getParentTokenId(),
                 entity.isRevoked()
         );
     }

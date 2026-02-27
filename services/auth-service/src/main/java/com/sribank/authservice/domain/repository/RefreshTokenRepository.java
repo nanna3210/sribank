@@ -8,7 +8,11 @@ public interface RefreshTokenRepository {
 
     RefreshToken save(RefreshToken refreshToken);
 
+    Optional<RefreshToken> findByToken(String token);
+
     Optional<RefreshToken> findActiveByToken(String token);
 
     void revokeByToken(String token);
+
+    void revokeByFamilyId(String familyId);
 }

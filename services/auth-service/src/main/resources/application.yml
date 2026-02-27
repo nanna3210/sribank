@@ -5,9 +5,9 @@ spring:
   application:
     name: auth-service
   datasource:
-    url: jdbc:mysql://localhost:3306/sribank_auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: root
-    password: nanna32100
+    url: ${AUTH_DB_URL:jdbc:mysql://localhost:3306/sribank_auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${AUTH_DB_USERNAME:root}
+    password: ${AUTH_DB_PASSWORD:nanna32100}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -39,6 +39,12 @@ security:
     attempt-window-minutes: 15
     lock-duration-minutes: 15
   jwt:
-    secret: "a-very-long-dev-only-secret-key-with-at-least-32-bytes"
+    secret: ${AUTH_JWT_SECRET:defaultSecretKeyAtLeast32CharactersLong123}
     access-expiration-seconds: 3600
     refresh-expiration-seconds: 604800
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html

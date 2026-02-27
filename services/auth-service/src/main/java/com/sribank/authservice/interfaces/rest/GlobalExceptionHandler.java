@@ -3,6 +3,7 @@ package com.sribank.authservice.interfaces.rest;
 import com.sribank.authservice.domain.exception.InvalidCredentialsException;
 import com.sribank.authservice.domain.exception.InvalidRefreshTokenException;
 import com.sribank.authservice.domain.exception.LoginTemporarilyBlockedException;
+import com.sribank.authservice.domain.exception.RefreshTokenReuseDetectedException;
 import com.sribank.authservice.domain.exception.UserAlreadyExistsException;
 import com.sribank.authservice.interfaces.rest.response.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,6 +48,13 @@ public class GlobalExceptionHandler {
     public ApiErrorResponse handleInvalidRefreshToken(RuntimeException ex, HttpServletRequest request) {
         log.warn("api_error code=AUTH_INVALID_REFRESH_TOKEN path={} message={}", request.getRequestURI(), ex.getMessage());
         return new ApiErrorResponse("AUTH_INVALID_REFRESH_TOKEN", ex.getMessage(), Instant.now());
+    }
+
+    @ExceptionHandler(RefreshTokenReuseDetectedException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiErrorResponse handleRefreshTokenReuse(RefreshTokenReuseDetectedException ex, HttpServletRequest request) {
+        log.warn("api_error code=AUTH_REFRESH_TOKEN_REUSE_DETECTED path={} message={}", request.getRequestURI(), ex.getMessage());
+        return new ApiErrorResponse("AUTH_REFRESH_TOKEN_REUSE_DETECTED", ex.getMessage(), Instant.now());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

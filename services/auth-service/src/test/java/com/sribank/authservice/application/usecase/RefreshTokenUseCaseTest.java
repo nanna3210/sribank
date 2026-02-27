@@ -3,6 +3,7 @@ package com.sribank.authservice.application.usecase;
 import com.sribank.authservice.application.command.RefreshTokenCommand;
 import com.sribank.authservice.application.dto.AuthResult;
 import com.sribank.authservice.domain.exception.InvalidRefreshTokenException;
+import com.sribank.authservice.domain.exception.RefreshTokenReuseDetectedException;
 import com.sribank.authservice.domain.model.AuthUser;
 import com.sribank.authservice.domain.model.RefreshToken;
 import com.sribank.authservice.domain.repository.AuthUserRepository;
@@ -43,7 +44,7 @@ class RefreshTokenUseCaseTest {
 
     @Test
     void executeThrowsWhenTokenNotFound() {
-        when(refreshTokenRepository.findActiveByToken("token")).thenReturn(Optional.empty());
+        when(refreshTokenRepository.findByToken("token")).thenReturn(Optional.empty());
 
         assertThrows(InvalidRefreshTokenException.class,
                 () -> refreshTokenUseCase.execute(new RefreshTokenCommand("token")));
@@ -53,8 +54,8 @@ class RefreshTokenUseCaseTest {
 
     @Test
     void executeRevokesAndThrowsWhenTokenExpired() {
-        RefreshToken expired = RefreshToken.restore("r1", "u1", "token", Instant.now().minusSeconds(10), false);
-        when(refreshTokenRepository.findActiveByToken("token")).thenReturn(Optional.of(expired));
+        RefreshToken expired = RefreshToken.restore("r1", "u1", "token", Instant.now().minusSeconds(10), "fam-1", null, false);
+        when(refreshTokenRepository.findByToken("token")).thenReturn(Optional.of(expired));
 
         assertThrows(InvalidRefreshTokenException.class,
                 () -> refreshTokenUseCase.execute(new RefreshTokenCommand("token")));
@@ -64,32 +65,43 @@ class RefreshTokenUseCaseTest {
 
     @Test
     void executeRevokesAndThrowsWhenSubjectMismatch() {
-        RefreshToken active = RefreshToken.restore("r1", "u1", "token", Instant.now().plusSeconds(120), false);
-        when(refreshTokenRepository.findActiveByToken("token")).thenReturn(Optional.of(active));
+        RefreshToken active = RefreshToken.restore("r1", "u1", "token", Instant.now().plusSeconds(120), "fam-1", null, false);
+        when(refreshTokenRepository.findByToken("token")).thenReturn(Optional.of(active));
         when(jwtTokenProvider.extractSubject("token")).thenReturn("u2");
 
         assertThrows(InvalidRefreshTokenException.class,
                 () -> refreshTokenUseCase.execute(new RefreshTokenCommand("token")));
 
-        verify(refreshTokenRepository).revokeByToken("token");
+        verify(refreshTokenRepository).revokeByFamilyId("fam-1");
     }
 
     @Test
     void executeRevokesAndIssuesNewTokensWhenRefreshIsValid() {
-        RefreshToken active = RefreshToken.restore("r1", "u1", "token", Instant.now().plusSeconds(120), false);
+        RefreshToken active = RefreshToken.restore("r1", "u1", "token", Instant.now().plusSeconds(120), "fam-1", null, false);
         AuthUser user = AuthUser.restore("u1", "sai", "sai@example.com", "hash", true, Instant.now());
         AuthResult expected = new AuthResult("u1", "sai", "access2", "refresh2");
 
-        when(refreshTokenRepository.findActiveByToken("token")).thenReturn(Optional.of(active));
+        when(refreshTokenRepository.findByToken("token")).thenReturn(Optional.of(active));
         when(jwtTokenProvider.extractSubject("token")).thenReturn("u1");
         when(authUserRepository.findById("u1")).thenReturn(Optional.of(user));
-        when(authTokenIssueService.issueForUser(user)).thenReturn(expected);
+        when(authTokenIssueService.issueForUser(user, "fam-1", "r1")).thenReturn(expected);
 
         AuthResult result = refreshTokenUseCase.execute(new RefreshTokenCommand("token"));
 
         assertEquals("u1", result.userId());
         assertEquals("access2", result.accessToken());
         verify(refreshTokenRepository).revokeByToken("token");
-        verify(authTokenIssueService).issueForUser(user);
+        verify(authTokenIssueService).issueForUser(user, "fam-1", "r1");
+    }
+
+    @Test
+    void executeRevokesFamilyAndThrowsWhenRevokedTokenReused() {
+        RefreshToken revoked = RefreshToken.restore("r1", "u1", "token", Instant.now().plusSeconds(120), "fam-1", null, true);
+        when(refreshTokenRepository.findByToken("token")).thenReturn(Optional.of(revoked));
+
+        assertThrows(RefreshTokenReuseDetectedException.class,
+                () -> refreshTokenUseCase.execute(new RefreshTokenCommand("token")));
+
+        verify(refreshTokenRepository).revokeByFamilyId("fam-1");
     }
 }

@@ -10,9 +10,15 @@ import java.util.Optional;
 
 public interface SpringDataRefreshTokenRepository extends JpaRepository<RefreshTokenJpaEntity, String> {
 
+    Optional<RefreshTokenJpaEntity> findByToken(String token);
+
     Optional<RefreshTokenJpaEntity> findByTokenAndRevokedFalse(String token);
 
     @Modifying
     @Query("update RefreshTokenJpaEntity t set t.revoked = true where t.token = :token and t.revoked = false")
     void revokeByToken(@Param("token") String token);
+
+    @Modifying
+    @Query("update RefreshTokenJpaEntity t set t.revoked = true where t.familyId = :familyId and t.revoked = false")
+    void revokeByFamilyId(@Param("familyId") String familyId);
 }

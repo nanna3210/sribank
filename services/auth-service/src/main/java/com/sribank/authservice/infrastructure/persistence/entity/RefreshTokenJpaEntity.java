@@ -24,17 +24,31 @@ public class RefreshTokenJpaEntity {
     @Column(name = "expiry_date", nullable = false)
     private Instant expiryDate;
 
+    @Column(name = "family_id", nullable = false, length = 36)
+    private String familyId;
+
+    @Column(name = "parent_token_id", length = 36)
+    private String parentTokenId;
+
     @Column(name = "revoked", nullable = false)
     private boolean revoked;
 
     protected RefreshTokenJpaEntity() {
     }
 
-    public RefreshTokenJpaEntity(String id, String userId, String token, Instant expiryDate, boolean revoked) {
+    public RefreshTokenJpaEntity(String id,
+                                 String userId,
+                                 String token,
+                                 Instant expiryDate,
+                                 String familyId,
+                                 String parentTokenId,
+                                 boolean revoked) {
         this.id = id;
         this.userId = userId;
         this.token = token;
         this.expiryDate = expiryDate;
+        this.familyId = familyId;
+        this.parentTokenId = parentTokenId;
         this.revoked = revoked;
     }
 
@@ -52,6 +66,14 @@ public class RefreshTokenJpaEntity {
 
     public Instant getExpiryDate() {
         return expiryDate;
+    }
+
+    public String getFamilyId() {
+        return familyId;
+    }
+
+    public String getParentTokenId() {
+        return parentTokenId;
     }
 
     public boolean isRevoked() {

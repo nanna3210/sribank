@@ -16,7 +16,15 @@ import com.sribank.authservice.interfaces.rest.request.LogoutRequest;
 import com.sribank.authservice.interfaces.rest.request.RefreshTokenRequest;
 import com.sribank.authservice.interfaces.rest.request.RegisterRequest;
 import com.sribank.authservice.interfaces.rest.response.AuthResponse;
+import com.sribank.authservice.interfaces.rest.response.ApiErrorResponse;
 import com.sribank.authservice.interfaces.rest.response.CurrentUserResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -31,6 +39,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@Tag(name = "Authentication", description = "Register, login, token, and authz endpoints")
 public class AuthController {
 
     private final RegisterUseCase registerUseCase;
@@ -53,6 +62,12 @@ public class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Register a new user")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Registered", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation error", content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "User already exists", content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
         AuthResult result = registerUseCase.execute(new RegisterCommand(
                 request.username(),
@@ -65,6 +80,12 @@ public class AuthController {
 
     @PostMapping("/login")
     @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Login with username and password")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Authenticated", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials", content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "429", description = "Temporarily blocked due to repeated failures", content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         AuthResult result = loginUseCase.execute(new LoginCommand(
                 request.username(),
@@ -76,6 +97,11 @@ public class AuthController {
 
     @PostMapping("/refresh")
     @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Refresh access/refresh token pair")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Tokens rotated", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Invalid refresh token or replay detected", content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     public AuthResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
         AuthResult result = refreshTokenUseCase.execute(new RefreshTokenCommand(request.refreshToken()));
         return toResponse(result);
@@ -83,12 +109,22 @@ public class AuthController {
 
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Logout by revoking refresh token")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Logged out"),
+            @ApiResponse(responseCode = "400", description = "Validation error", content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     public void logout(@Valid @RequestBody LogoutRequest request) {
         logoutUseCase.execute(new LogoutCommand(request.refreshToken()));
     }
 
     @GetMapping("/me")
     @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Get current authenticated user")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Current user", content = @Content(schema = @Schema(implementation = CurrentUserResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     public CurrentUserResponse me(Authentication authentication) {
         CurrentUserResult result = getCurrentUserUseCase.execute(String.valueOf(authentication.getPrincipal()));
         return new CurrentUserResponse(result.userId(), result.username(), result.email());
@@ -96,6 +132,12 @@ public class AuthController {
 
     @GetMapping("/admin/ping")
     @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Admin-only ping endpoint")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Admin access confirmed",
+                    content = @Content(examples = @ExampleObject(value = "{\"status\":\"OK\",\"message\":\"admin access granted\"}"))),
+            @ApiResponse(responseCode = "403", description = "Forbidden", content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     public Map<String, String> adminPing() {
         return Map.of("status", "OK", "message", "admin access granted");
     }
