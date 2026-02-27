@@ -20,12 +20,24 @@ spring:
     locations: classpath:db/migration
 
 management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
   endpoints:
     web:
       exposure:
         include: health,info
 
+logging:
+  pattern:
+    level: "%5p [corr:%X{correlationId:-}]"
+
 security:
+  login-protection:
+    max-failed-attempts: 5
+    attempt-window-minutes: 15
+    lock-duration-minutes: 15
   jwt:
     secret: "a-very-long-dev-only-secret-key-with-at-least-32-bytes"
     access-expiration-seconds: 3600

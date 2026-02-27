@@ -5,6 +5,9 @@ import com.sribank.authservice.domain.repository.LoginAttemptRepository;
 import com.sribank.authservice.infrastructure.persistence.entity.LoginAttemptJpaEntity;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
+import java.util.Optional;
+
 @Repository
 public class JpaLoginAttemptRepositoryAdapter implements LoginAttemptRepository {
 
@@ -18,6 +21,17 @@ public class JpaLoginAttemptRepositoryAdapter implements LoginAttemptRepository 
     public LoginAttempt save(LoginAttempt loginAttempt) {
         LoginAttemptJpaEntity saved = springDataLoginAttemptRepository.save(toEntity(loginAttempt));
         return toDomain(saved);
+    }
+
+    @Override
+    public long countFailedAttemptsSince(String username, Instant since) {
+        return springDataLoginAttemptRepository.countByUsernameAndSuccessFalseAndAttemptTimeAfter(username, since);
+    }
+
+    @Override
+    public Optional<Instant> findLatestFailedAttemptTime(String username) {
+        return springDataLoginAttemptRepository.findTopByUsernameAndSuccessFalseOrderByAttemptTimeDesc(username)
+                .map(LoginAttemptJpaEntity::getAttemptTime);
     }
 
     private LoginAttemptJpaEntity toEntity(LoginAttempt loginAttempt) {
